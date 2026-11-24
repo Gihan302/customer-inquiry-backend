@@ -402,6 +402,26 @@ Tests run against `TEST_DB_NAME` only. Three safeguards protect the development 
 
 Coverage includes everything the assessment lists — valid/incorrect login; missing, invalid and **expired** tokens; creating valid and invalid inquiries; Public visibility; **Private inquiries hidden from other staff, including by direct URL (Situation 3)**; creator access; updating Public vs. another user's Private inquiry; valid and invalid status transitions; invalid ids — plus 409 conflicts, search/filter/pagination, rejected client-controlled fields and body-format errors.
 
+Examples of purposeful tests, one per kind of rule (all in `tests/inquiry.test.ts`):
+
+| Rule type | Test | What it proves |
+|---|---|---|
+| **Security** | *prevents another staff member from viewing a Private inquiry, even by direct URL (Situation 3)* | Staff B cannot find Staff A's Private inquiry in the list, filters or search, and opening its id directly returns a 404 identical to a non-existent id |
+| **Business** | *rejects invalid transitions* / *allows New -> In Progress -> Resolved -> In Progress (reopen)* | The status workflow is enforced by the API, not just the UI |
+| **Business (concurrency)** | *returns 409 instead of overwriting when the status changed between read and write* | A transition validated against stale data is refused and the newer change is kept |
+| **Validation** | *rejects an inquiry with missing required information* / *refuses client-supplied created_by and status* | Every invalid field is reported, and the client cannot choose the owner or status |
+
+The frontend has its own component tests (Vitest + React Testing Library) — see the [frontend README](https://github.com/Gihan302/customer-inquiry-frontend#tests).
+
+### Testing gaps
+
+- **Mostly integration tests.** Tests call the HTTP API with a real database, which proves the layers work together but means services and repositories have few isolated unit tests.
+- **Concurrency is simulated, not raced.** The 409 status test forces a stale read with a mock; truly simultaneous requests were exercised manually during development but are not in the suite.
+- **Infrastructure failures are not in the suite.** "Database unavailable → 503", startup refusal on bad config, and graceful shutdown were verified manually, not by Jest.
+- **Scripts are not tested.** `db:migrate`, `db:seed` and `staff:create` were run and checked by hand.
+- **Token expiry** is tested with a token that is already expired, not by waiting for a real token to age.
+- **No load, performance or security-scanner testing**, and no coverage threshold is enforced.
+
 ## 11. Test accounts (local development)
 
 Created by `npm run db:seed`:
